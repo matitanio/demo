@@ -1,0 +1,58 @@
+buildscript {
+	ext {
+		springBootVersion = '1.5.2.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath('se.transmode.gradle:gradle-docker:1.2')
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'groovy'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'docker'
+
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+}
+
+docker {
+	baseImage("java:8")
+	maintainer("Redbee")
+}
+
+task buildDocker(type: Docker, dependsOn: build) {
+	push = false
+	dryRun = true
+	applicationName = jar.baseName
+
+	// dockerfile = file('src/main/docker/Dockerfile')
+	doFirst {
+		copy {
+			from jar
+			into stageDir
+		}
+	}
+
+	volume("/tmp", "/log")
+	addFile("${jar.baseName}-${project.version}.jar", "app.jar")
+	runCommand("bash -c 'touch /app.jar'")
+	entryPoint(["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"])
+}
+
+
+dependencies {
+	compile('org.springframework.boot:spring-boot-starter-web')
+	testCompile('org.springframework.boot:spring-boot-starter-test',
+			'org.codehaus.groovy:groovy-all:2.4.4',
+			'org.spockframework:spock-core:1.0-groovy-2.4')
+
+}
